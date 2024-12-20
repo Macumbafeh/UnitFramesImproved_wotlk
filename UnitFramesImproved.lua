@@ -41,7 +41,7 @@ PlayerName:SetPoint("CENTER",50,38);
 PlayerFrameHealthBarText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE");
 PlayerFrameHealthBarText:SetPoint("CENTER", 50, 13);
 PlayerFrameManaBarText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE");
-
+PlayerFrameGroupIndicator:Hide()
 
 TargetFrameTextureFrameName:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE");
 TargetFrameTextureFrameName:SetPoint("CENTER",-50,38);
@@ -56,6 +56,36 @@ FocusFrameTextureFrameHealthBarText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE"
 FocusFrameTextureFrameHealthBarText:SetPoint("CENTER", -50, 13);
 FocusFrameTextureFrameManaBarText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE");
 end
+
+-- Disable Threat on party frames
+local function DisablePartyFrameFlash()
+    for i = 1, MAX_PARTY_MEMBERS do
+        local flashTexture = _G["PartyMemberFrame"..i.."Flash"]
+        if flashTexture then
+            flashTexture:Hide()
+            flashTexture:SetAlpha(0) -- Completely disable visibility
+			for i=1,4 do _G["PartyMemberFrame"..i.."PVPIcon"]:Hide()end
+			PlayerFrameGroupIndicator:Hide()
+        end
+    end
+end
+
+-- Hook to disable it on updates and frame loads
+hooksecurefunc("PartyMemberFrame_UpdateMember", DisablePartyFrameFlash)
+hooksecurefunc("PartyMemberFrame_UpdateArt", DisablePartyFrameFlash)
+
+function PartyMemberFrame_UpdateMemberHealth(self, elapsed)
+    -- Remove or comment out the logic for setting flash visibility
+    _G[self:GetName().."Flash"]:Hide() -- Explicitly hide it
+end
+hooksecurefunc("UnitThreatSituation", function(unit)
+    if string.find(unit, "party") then
+        local frame = _G["PartyMemberFrame"..unit:match("%d")]
+        if frame then
+            _G[frame:GetName().."Flash"]:Hide()
+        end
+    end
+end)
 
 -- Event listener to make sure we've loaded our settings and thta we apply them
 function UnitFramesImproved:VARIABLES_LOADED()
@@ -176,6 +206,7 @@ function UnitFramesImproved_Style_TargetFrame(self)
 		self.healthbar.TextString:SetPoint("CENTER",-50,6);
 		self.deadText:SetPoint("CENTER",-50,6);
 		self.nameBackground:Hide();
+		for i=1,4 do _G["PartyMemberFrame"..i.."PVPIcon"]:Hide()end
 	end
 end
 
@@ -435,14 +466,22 @@ function UnitFramesImproved_TargetFrame_CheckFaction(self)
 	if ( UnitIsPVPFreeForAll(self.unit) ) then
 		self.pvpIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
 		self.pvpIcon:Hide();
+		PlayerPVPIcon:Hide()
+		for i=1,4 do _G["PartyMemberFrame"..i.."PVPIcon"]:Hide()end
 	elseif ( factionGroup and UnitIsPVP(self.unit) and UnitIsEnemy("player", self.unit) ) then
 		self.pvpIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA");
 		self.pvpIcon:Hide();
+		PlayerPVPIcon:Hide()
+		for i=1,4 do _G["PartyMemberFrame"..i.."PVPIcon"]:Hide()end
 	elseif ( factionGroup ) then
 		self.pvpIcon:SetTexture("Interface\\TargetingFrame\\UI-PVP-"..factionGroup);
 		self.pvpIcon:Hide();
+		PlayerPVPIcon:Hide()
+		for i=1,4 do _G["PartyMemberFrame"..i.."PVPIcon"]:Hide()end
 	else
 		self.pvpIcon:Hide();
+		PlayerPVPIcon:Hide()
+		for i=1,4 do _G["PartyMemberFrame"..i.."PVPIcon"]:Hide()end
 	end
 end
 
