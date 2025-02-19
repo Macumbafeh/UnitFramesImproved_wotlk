@@ -487,49 +487,70 @@ end
 
 -- Utility functions
 function UnitColor(unit)
-	local r, g, b;
-	if ( ( not UnitIsPlayer(unit) ) and ( ( not UnitIsConnected(unit) ) or ( UnitIsDeadOrGhost(unit) ) ) ) then
-		--Color it gray
-		r, g, b = 0.5, 0.5, 0.5;
-	elseif (UnitIsPlayer(unit) and UnitExists(unit) and not UnitIsDead(unit) and not UnitIsDeadOrGhost(unit) and not UnitIsGhost(unit) and UnitIsConnected(unit) and UnitIsFriend("player", unit)) then
-            
-		--Try to color it by class.
-		local localizedClass, englishClass = UnitClass(unit);
-		local classColor = RAID_CLASS_COLORS[englishClass];
-		if ( classColor ) then
-			r, g, b = classColor.r, classColor.g, classColor.b;
-		else
-			if ( UnitIsFriend("player", unit) or UnitIsFriend("pet", unit) ) then
-				r, g, b = 0.0, 1.0, 0.0;
-			else
-				r, g, b = 1.0, 0.0, 0.0;
-			end
-		end
-	else
-		r, g, b = UnitSelectionColor(unit);
-	end
-	
-	return r, g, b;
+    local r, g, b;
+
+    -- Ensure the unit exists before proceeding
+    if not UnitExists(unit) then
+        return 0.5, 0.5, 0.5; -- Default to gray for invalid units
+    end
+
+    -- Check if the unit is disconnected, dead, or a ghost
+    if (not UnitIsPlayer(unit)) and ((not UnitIsConnected(unit)) or (UnitIsDeadOrGhost(unit))) then
+        -- Color it gray
+        r, g, b = 0.5, 0.5, 0.5;
+    elseif UnitIsPlayer(unit) and UnitExists(unit) and not UnitIsDead(unit) and not UnitIsDeadOrGhost(unit) and not UnitIsGhost(unit) and UnitIsConnected(unit) and UnitIsFriend("player", unit) then
+        -- Try to color it by class
+        local _, englishClass = UnitClass(unit);
+        local classColor = RAID_CLASS_COLORS[englishClass];
+        if classColor then
+            r, g, b = classColor.r, classColor.g, classColor.b;
+        else
+            if UnitIsFriend("player", unit) or UnitIsFriend("pet", unit) then
+                r, g, b = 0.0, 1.0, 0.0; -- Green for friendly NPCs
+            else
+                r, g, b = 1.0, 0.0, 0.0; -- Red for hostile NPCs
+            end
+        end
+    else
+        -- Use default selection color
+        r, g, b = UnitSelectionColor(unit);
+    end
+
+    return r, g, b;
 end
 
-
 -- Party class color
---[[ local function UpdatePartyFramesColor()
+local function UpdatePartyFramesColor()
     for i = 1, MAX_PARTY_MEMBERS do
-        local frame = _G["PartyMemberFrame" .. i]
+        local frameName = "PartyMemberFrame" .. i
+        local frame = _G[frameName]
         if frame and frame:IsShown() then
-            local _, class = UnitClass("party" .. i)
-            if class then
-                local color = RAID_CLASS_COLORS[class]
-                frame.healthbar:SetStatusBarColor(color.r, color.g, color.b)
+            local healthBar = _G[frameName .. "HealthBar"]
+            if healthBar then
+                local unit = "party" .. i
+                if UnitExists(unit) then -- Ensure the unit exists
+                    local r, g, b = UnitColor(unit)
+                    healthBar:SetStatusBarColor(r, g, b)
+                else
+                    -- If the unit doesn't exist, reset the color to gray
+                    healthBar:SetStatusBarColor(0.5, 0.5, 0.5)
+                end
             end
         end
     end
 end
 
-local f = CreateFrame("Frame")
-f:RegisterEvent("PARTY_MEMBERS_CHANGED")
-f:SetScript("OnEvent", UpdatePartyFramesColor) ]]
+-- Register events to handle party frame updates
+local partyFrameUpdater = CreateFrame("Frame")
+partyFrameUpdater:RegisterEvent("PARTY_MEMBERS_CHANGED")
+partyFrameUpdater:RegisterEvent("GROUP_ROSTER_UPDATE")
+partyFrameUpdater:SetScript("OnEvent", function()
+    UpdatePartyFramesColor()
+end)
+
+-- Initial call to apply colors when the addon loads
+UpdatePartyFramesColor()
+
 
 --[[ function UnitFramesImproved_CapDisplayOfNumericValue(value)
 	local strLen = strlen(value);
